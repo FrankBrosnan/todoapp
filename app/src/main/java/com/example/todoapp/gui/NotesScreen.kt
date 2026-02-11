@@ -48,8 +48,20 @@ import com.example.todoapp.viewmodel.NotesViewModel
     }
 
     @Composable
+
+    //Design Decision.
+    //Had 2 options here.
+    // Option 1. Pass entire note to function as opposed to just id
+    // Usually, it's better for a "Delete" action in a list to pass
+    // the entire object back.
+    // This makes the UI more flexible and matches your current
+    // ViewModel logic.
+    // Option 2. Not done. pass only the note id a long.
+    // If you want to keep the Composable passing a Long id
+    // (perhaps you only want to work with IDs in the UI layer),
+    // you must change how you call the ViewModel.
     fun NoteItem(note: Note,
-                 onDelete:(Long) -> Unit){
+                 onDelete:(Note) -> Unit){
         Card(
             modifier = Modifier.fillMaxWidth(),
             colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant)
@@ -60,7 +72,7 @@ import com.example.todoapp.viewmodel.NotesViewModel
                 horizontalArrangement = Arrangement.SpaceBetween
             ) {
                 Text(note.text, modifier = Modifier.weight(1f))
-                IconButton(onClick = { onDelete(note.id) }) {
+                IconButton(onClick = { onDelete(note) }) {
                     Icon(Icons.Default.Delete, contentDescription = "Delete")
                 }
             }

@@ -1,25 +1,38 @@
 package com.example.todoapp.viewmodel
 
-import androidx.lifecycle.ViewModel
+import android.app.Application
+import androidx.lifecycle.AndroidViewModel
+import androidx.lifecycle.viewModelScope
+import com.example.todoapp.data.NoteDatabase
+import com.example.todoapp.data.NoteRepository
 import com.example.todoapp.model.Note
-import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.stateIn
+import kotlinx.coroutines.launch
 
-class NotesViewModel : ViewModel() {
-    private val _notes =
-        MutableStateFlow<List<Note>>(emptyList())
-    val notes : StateFlow<List<Note>> =
-        _notes.asStateFlow()
+class NotesViewModel(application: Application) : AndroidViewModel(application) {
 
-    fun addNote(text: String){
+    private val repository: NoteRepository
+
+    val notes: StateFlow<List<Note>>
+
+    init {
+        val dao = NoteDatabase.getDatabase(application).noteDao()
+        repository = NoteRepository(dao)
+        notes = repository.allNotes.stateIn(viewModelScope, SharingStarted.Lazily, emptyList())
+    }
+
+    fun addNote(text: String) {
         if (text.isBlank()) return
-        val note = Note(text = text)
-        _notes.value = _notes.value + note
+        viewModelScope.launch {
+            repository.insert(Note(text = text))
+        }
     }
 
-    fun removeNote(id:Long){
-        _notes.value = _notes.value.filter { it.id != id }
+    fun removeNote(note: Note) {
+        viewModelScope.launch {
+            repository.delete(note)
+        }
     }
-
 }
