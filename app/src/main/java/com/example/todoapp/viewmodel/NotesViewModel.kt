@@ -20,12 +20,6 @@ class NotesViewModel(app: Application) : AndroidViewModel(app) {
         }
     }
 
-    fun removeNote(note: Note) {
-        viewModelScope.launch {
-            repository.delete(note)
-        }
-    }
-
     suspend fun getNoteById(id: Long): Note? {
         return repository.getById(id)
     }
@@ -34,5 +28,9 @@ class NotesViewModel(app: Application) : AndroidViewModel(app) {
         viewModelScope.launch {
             repository.update(note)
         }
+    }
+
+    fun deleteNote(note: Note) {
+        viewModelScope.launch { repository.delete(note) }
     }
 }
