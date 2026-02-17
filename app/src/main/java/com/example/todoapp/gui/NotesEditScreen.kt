@@ -9,6 +9,9 @@ import androidx.navigation.NavController
 import com.example.todoapp.model.Note
 import com.example.todoapp.viewmodel.NotesViewModel
 import kotlinx.coroutines.launch
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Delete
+
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -19,13 +22,12 @@ fun NotesEditScreen(
 ) {
     val scope = rememberCoroutineScope()
     val existingNote by produceState<Note?>(initialValue = null, key1 = noteId) {
-        if (noteId != -1L) {
-            value = viewModel.getNoteById(noteId)
-        }
+        if (noteId != -1L) value = viewModel.getNoteById(noteId)
     }
 
     var title by remember { mutableStateOf("") }
     var content by remember { mutableStateOf("") }
+    var showDeleteDialog by remember { mutableStateOf(false) }
 
     LaunchedEffect(existingNote) {
         existingNote?.let {
@@ -36,7 +38,19 @@ fun NotesEditScreen(
 
     Scaffold(
         topBar = {
-            TopAppBar(title = { Text(if (noteId == -1L) "Add Note" else "Edit Note") })
+            TopAppBar(
+                title = { Text(if (noteId == -1L) "Add Note" else "Edit Note") },
+                actions = {
+                    if (noteId != -1L) {
+                        IconButton(onClick = { showDeleteDialog = true }) {
+                            Icon(
+                                imageVector = Icons.Default.Delete,
+                                contentDescription = "Delete Note"
+                            )
+                        }
+                    }
+                }
+            )
         }
     ) { padding ->
         Column(
@@ -83,5 +97,30 @@ fun NotesEditScreen(
                 Text(if (noteId == -1L) "Save" else "Update")
             }
         }
+    }
+
+    // Delete confirmation dialog
+    if (showDeleteDialog) {
+        AlertDialog(
+            onDismissRequest = { showDeleteDialog = false },
+            confirmButton = {
+                TextButton(onClick = {
+                    scope.launch {
+                        existingNote?.let { viewModel.deleteNote(it) }
+                        showDeleteDialog = false
+                        navController.popBackStack()
+                    }
+                }) {
+                    Text("Delete", color = MaterialTheme.colorScheme.error)
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showDeleteDialog = false }) {
+                    Text("Cancel")
+                }
+            },
+            title = { Text("Delete Note") },
+            text = { Text("Are you sure you want to delete this note?") }
+        )
     }
 }
