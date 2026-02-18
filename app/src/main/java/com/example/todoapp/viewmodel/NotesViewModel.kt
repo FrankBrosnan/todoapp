@@ -5,11 +5,10 @@ import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.todoapp.data.NoteRepository
 import com.example.todoapp.model.Note
-import kotlinx.coroutines.channels.BufferOverflow
 import kotlinx.coroutines.flow.Flow
-import kotlinx.coroutines.flow.MutableSharedFlow
-import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.channels.Channel
+import kotlinx.coroutines.flow.receiveAsFlow
 
 class NotesViewModel(app: Application) : AndroidViewModel(app) {
 
@@ -18,11 +17,12 @@ class NotesViewModel(app: Application) : AndroidViewModel(app) {
 
     private var recentlyDeletedNote: Note? = null
 
-    private val _showUndoEvent = MutableSharedFlow<Unit>(
-        replay =1, //Store the last event
-        onBufferOverflow = BufferOverflow.DROP_OLDEST
-    )
-    val showUndoEvent = _showUndoEvent.asSharedFlow()
+    //private val _showUndoEvent = MutableSharedFlow<Unit>(
+    //    replay =1, //Store the last event
+    //    onBufferOverflow = BufferOverflow.DROP_OLDEST
+    //)
+    private val _showUndoEvent = Channel<Unit>(Channel.BUFFERED)
+    val showUndoEvent = _showUndoEvent.receiveAsFlow()
 
     fun addNote(title:String, content: String) {
         if (title.isBlank() || content.isBlank()) return
@@ -45,7 +45,7 @@ class NotesViewModel(app: Application) : AndroidViewModel(app) {
         viewModelScope.launch {
             repository.delete(note)
             recentlyDeletedNote = note
-            _showUndoEvent.emit(Unit)
+            _showUndoEvent.send(Unit)
         }
     }
 
