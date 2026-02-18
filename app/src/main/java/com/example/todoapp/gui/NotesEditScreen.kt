@@ -1,5 +1,6 @@
 package com.example.todoapp.gui
 
+import android.util.Log
 import androidx.compose.foundation.layout.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -18,9 +19,11 @@ import androidx.compose.material.icons.filled.Delete
 fun NotesEditScreen(
     navController: NavController,
     noteId: Long,
-    viewModel: NotesViewModel = androidx.lifecycle.viewmodel.compose.viewModel()
+    viewModel: NotesViewModel
 ) {
+    Log.d("VM_CHECK_NotesEditScreen",viewModel.toString())
     val scope = rememberCoroutineScope()
+
     val existingNote by produceState<Note?>(initialValue = null, key1 = noteId) {
         if (noteId != -1L) value = viewModel.getNoteById(noteId)
     }
