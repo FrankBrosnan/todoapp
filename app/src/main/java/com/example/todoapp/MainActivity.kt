@@ -3,27 +3,60 @@ package com.example.todoapp
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Surface
+import androidx.compose.material3.*
+import androidx.compose.runtime.remember
+import androidx.lifecycle.viewmodel.compose.viewModel
+import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
+import androidx.navigation.navArgument
 import com.example.todoapp.gui.NotesListScreen
+import com.example.todoapp.gui.NotesAddEditScreen
 import com.example.todoapp.viewmodel.NotesViewModel
-import androidx.lifecycle.viewmodel.compose.viewModel
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContent {
             MaterialTheme {
-                Surface {
-                    val navController = rememberNavController()
-                    val viewModel: NotesViewModel = viewModel()
+                val navController = rememberNavController()
+                NavHost(
+                    navController = navController,
+                    startDestination = "note_list"
+                ) {
+                    //composable("note_list") {
+                    //    NotesListScreen(navController)
 
-                    NavHost(navController = navController, startDestination = "notes_list") {
-                        composable("notes_list") { NotesListScreen(viewModel = viewModel) }
-                        // composable("note_edit/{noteId}") { ... } // future
+                    //new code
+                    composable("note_list") { backStackEntry ->
+                        val parentEntry = remember(backStackEntry) {
+                            navController.getBackStackEntry("note_list")
+                        }
+                        val viewModel: NotesViewModel = viewModel(parentEntry)
+
+                        NotesListScreen(
+                            navController = navController,
+                            viewModel = viewModel
+                        )
+                    }
+
+
+
+                    composable(
+                        route = "add_edit_note?noteId={noteId}",
+                        arguments = listOf(
+                            navArgument("noteId") {
+                                type = NavType.LongType
+                                defaultValue = -1L
+                            }
+                        )
+                    ) { backStackEntry ->
+                        val parentEntry = remember(backStackEntry) {navController.getBackStackEntry("note_list")}
+                        val viewModel: NotesViewModel = viewModel(parentEntry)
+                        //val noteId = backStackEntry.arguments?.getString("noteId")?.toLong() ?: -1L
+                        val noteId = backStackEntry.arguments?.getLong("noteId") ?: -1L
+                        NotesAddEditScreen(navController, noteId, viewModel = viewModel)
                     }
                 }
             }

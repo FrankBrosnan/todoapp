@@ -21,7 +21,7 @@ fun NoteItem(note: Note, onDelete: (Note) -> Unit) {
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.SpaceBetween
         ) {
-            Text(note.text, modifier = Modifier.weight(1f))
+            Text(note.title, modifier = Modifier.weight(1f))
             IconButton(onClick = { onDelete(note) }) {
                 Icon(Icons.Default.Delete, contentDescription = "Delete")
             }

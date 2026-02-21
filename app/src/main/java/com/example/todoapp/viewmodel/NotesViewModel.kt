@@ -3,36 +3,58 @@ package com.example.todoapp.viewmodel
 import android.app.Application
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
-import com.example.todoapp.data.NoteDatabase
 import com.example.todoapp.data.NoteRepository
 import com.example.todoapp.model.Note
-import kotlinx.coroutines.flow.SharingStarted
-import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.flow.stateIn
+import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.channels.Channel
+import kotlinx.coroutines.flow.receiveAsFlow
 
-class NotesViewModel(application: Application) : AndroidViewModel(application) {
+class NotesViewModel(app: Application) : AndroidViewModel(app) {
 
-    private val repository: NoteRepository
+    private val repository: NoteRepository = NoteRepository.getInstance(app)
+    val allNotes: Flow<List<Note>> = repository.getAllFlow()
 
-    val notes: StateFlow<List<Note>>
+    private var recentlyDeletedNote: Note? = null
 
-    init {
-        val dao = NoteDatabase.getDatabase(application).noteDao()
-        repository = NoteRepository(dao)
-        notes = repository.allNotes.stateIn(viewModelScope, SharingStarted.Lazily, emptyList())
-    }
+    //private val _showUndoEvent = MutableSharedFlow<Unit>(
+    //    replay =1, //Store the last event
+    //    onBufferOverflow = BufferOverflow.DROP_OLDEST
+    //)
+    private val _showUndoEvent = Channel<Unit>(Channel.BUFFERED)
+    val showUndoEvent = _showUndoEvent.receiveAsFlow()
 
-    fun addNote(text: String) {
-        if (text.isBlank()) return
+    fun addNote(title:String, content: String) {
+        if (title.isBlank() || content.isBlank()) return
         viewModelScope.launch {
-            repository.insert(Note(text = text))
+            repository.insert(Note(title = title, content = content))
         }
     }
 
-    fun removeNote(note: Note) {
+    suspend fun getNoteById(id: Long): Note? {
+        return repository.getById(id)
+    }
+
+    fun updateNote(note: Note) {
+        viewModelScope.launch {
+            repository.update(note)
+        }
+    }
+
+    fun deleteNote(note: Note) {
         viewModelScope.launch {
             repository.delete(note)
+            recentlyDeletedNote = note
+            _showUndoEvent.send(Unit)
+        }
+    }
+
+    fun undoDelete() {
+        viewModelScope.launch {
+            recentlyDeletedNote?.let {
+                repository.insert(it.copy(id = 0)) // insert new copy
+                recentlyDeletedNote = null
+            }
         }
     }
 }
