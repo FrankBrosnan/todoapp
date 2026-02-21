@@ -20,7 +20,7 @@ import androidx.navigation.NavController
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun NotesListScreen(navController: NavController, viewModel: NotesViewModel) {
-    Log.d("VM_CHECK_NotesListScreen", viewModel.toString())
+
     val notes by viewModel.allNotes.collectAsState(initial = emptyList())
 
     val snackbarHostState = remember { SnackbarHostState() }

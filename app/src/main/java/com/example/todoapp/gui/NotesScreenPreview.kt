@@ -18,6 +18,6 @@ fun NotesListScreenPreview() {
 @Composable
 fun NotesEditScreenPreview() {
     MaterialTheme {
-        NotesEditScreen(navController = rememberNavController(), noteId = -1,viewModel = viewModel())
+        NotesAddEditScreen(navController = rememberNavController(), noteId = -1,viewModel = viewModel())
     }
 }

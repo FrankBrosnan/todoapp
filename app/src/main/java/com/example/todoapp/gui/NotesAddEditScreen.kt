@@ -1,6 +1,5 @@
 package com.example.todoapp.gui
 
-import android.util.Log
 import androidx.compose.foundation.layout.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -16,12 +15,12 @@ import androidx.compose.material.icons.filled.Delete
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun NotesEditScreen(
+fun NotesAddEditScreen(
     navController: NavController,
     noteId: Long,
     viewModel: NotesViewModel
 ) {
-    Log.d("VM_CHECK_NotesEditScreen",viewModel.toString())
+
     val scope = rememberCoroutineScope()
 
     val existingNote by produceState<Note?>(initialValue = null, key1 = noteId) {

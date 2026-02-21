@@ -12,7 +12,7 @@ import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
 import com.example.todoapp.gui.NotesListScreen
-import com.example.todoapp.gui.NotesEditScreen
+import com.example.todoapp.gui.NotesAddEditScreen
 import com.example.todoapp.viewmodel.NotesViewModel
 
 class MainActivity : ComponentActivity() {
@@ -56,7 +56,7 @@ class MainActivity : ComponentActivity() {
                         val viewModel: NotesViewModel = viewModel(parentEntry)
                         //val noteId = backStackEntry.arguments?.getString("noteId")?.toLong() ?: -1L
                         val noteId = backStackEntry.arguments?.getLong("noteId") ?: -1L
-                        NotesEditScreen(navController, noteId, viewModel = viewModel)
+                        NotesAddEditScreen(navController, noteId, viewModel = viewModel)
                     }
                 }
             }
