@@ -13,6 +13,7 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.unit.dp
 import com.example.todoapp.viewmodel.NotesViewModel
 import androidx.navigation.NavController
@@ -27,7 +28,9 @@ fun NotesListScreen(navController: NavController, viewModel: NotesViewModel) {
 
     Scaffold(
         floatingActionButton = {
-            FloatingActionButton(onClick = { navController.navigate("add_edit_note") }) {
+            FloatingActionButton(
+                modifier = Modifier.testTag("fab_add_note"),
+                onClick = { navController.navigate("add_edit_note") }) {
                 Text("+")
             }
         },
@@ -37,7 +40,8 @@ fun NotesListScreen(navController: NavController, viewModel: NotesViewModel) {
             Box(
                 modifier = Modifier
                     .fillMaxSize()
-                    .padding(padding),
+                    .padding(padding)
+                    .testTag("notes_list"),
                 contentAlignment = Alignment.Center
             ) {
                 Text(text = "No Notes", style = MaterialTheme.typography.bodyLarge)
@@ -45,7 +49,7 @@ fun NotesListScreen(navController: NavController, viewModel: NotesViewModel) {
         } else {
             LazyColumn(
                 contentPadding = padding,
-                modifier = Modifier.fillMaxSize()
+                modifier = Modifier.testTag("notes_list").fillMaxSize()
             ) {
                 // Using items(notes) with a key for smooth animations and stability
                 items(
@@ -96,7 +100,7 @@ fun NotesListScreen(navController: NavController, viewModel: NotesViewModel) {
                             )
                         ) {
                             Column(Modifier.padding(16.dp)) {
-                                Text(text = note.title, style = MaterialTheme.typography.titleMedium)
+                                Text(text = note.title, modifier = Modifier.testTag("note_title_${note.id}"), style = MaterialTheme.typography.titleMedium)
                                 Spacer(Modifier.height(4.dp))
                                 Text(text = note.content, style = MaterialTheme.typography.bodyMedium)
                             }

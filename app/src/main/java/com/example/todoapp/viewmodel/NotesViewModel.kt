@@ -2,6 +2,7 @@ package com.example.todoapp.viewmodel
 
 import android.app.Application
 import androidx.lifecycle.AndroidViewModel
+import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.todoapp.data.NoteRepository
 import com.example.todoapp.model.Note
@@ -10,9 +11,9 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.receiveAsFlow
 
-class NotesViewModel(app: Application) : AndroidViewModel(app) {
+class NotesViewModel(private val repository: NoteRepository) : ViewModel() {
 
-    private val repository: NoteRepository = NoteRepository.getInstance(app)
+    //private val repository: NoteRepository = NoteRepository.getInstance(app)
     val allNotes: Flow<List<Note>> = repository.getAllFlow()
 
     private var recentlyDeletedNote: Note? = null
@@ -24,8 +25,8 @@ class NotesViewModel(app: Application) : AndroidViewModel(app) {
     private val _showUndoEvent = Channel<Unit>(Channel.BUFFERED)
     val showUndoEvent = _showUndoEvent.receiveAsFlow()
 
-    fun addNote(title:String, content: String) {
-        if (title.isBlank() || content.isBlank()) return
+    suspend fun addNote(title:String, content: String) {
+        if (title.isBlank() && content.isBlank()) return
         viewModelScope.launch {
             repository.insert(Note(title = title, content = content))
         }

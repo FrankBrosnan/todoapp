@@ -11,6 +11,7 @@ import com.example.todoapp.viewmodel.NotesViewModel
 import kotlinx.coroutines.launch
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Delete
+import androidx.compose.ui.platform.testTag
 
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -44,7 +45,10 @@ fun NotesAddEditScreen(
                 title = { Text(if (noteId == -1L) "Add Note" else "Edit Note") },
                 actions = {
                     if (noteId != -1L) {
-                        IconButton(onClick = { showDeleteDialog = true }) {
+                        IconButton(
+                            onClick = { showDeleteDialog = true },
+                            modifier = Modifier.testTag("action_delete")
+                        ) {
                             Icon(
                                 imageVector = Icons.Default.Delete,
                                 contentDescription = "Delete Note"
@@ -65,7 +69,7 @@ fun NotesAddEditScreen(
                 value = title,
                 onValueChange = { title = it },
                 label = { Text("Title") },
-                modifier = Modifier.fillMaxWidth()
+                modifier = Modifier.fillMaxWidth().testTag("title_input")
             )
 
             Spacer(Modifier.height(12.dp))
@@ -77,6 +81,7 @@ fun NotesAddEditScreen(
                 modifier = Modifier
                     .fillMaxWidth()
                     .height(160.dp)
+                    .testTag("content_input")
             )
 
             Spacer(Modifier.height(16.dp))
@@ -94,7 +99,7 @@ fun NotesAddEditScreen(
                         navController.popBackStack()
                     }
                 },
-                modifier = Modifier.fillMaxWidth()
+                modifier = Modifier.fillMaxWidth().testTag("save_note")
             ) {
                 Text(if (noteId == -1L) "Save" else "Update")
             }
