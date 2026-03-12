@@ -57,4 +57,5 @@ Undo delete creates new note with recently deleted note
 Repository is a singleton to provide access to it.
 NavGraph scoped models
 In memory db instrumentation tests.
+Moved from kapt to kts with Room.
 

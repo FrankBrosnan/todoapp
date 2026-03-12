@@ -2,7 +2,11 @@ plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.android)
     alias(libs.plugins.kotlin.compose)
-    kotlin("kapt")
+    alias(libs.plugins.ksp)
+}
+
+configurations.all {
+    exclude(group = "com.intellij", module = "annotations")
 }
 
 android {
@@ -55,11 +59,15 @@ dependencies {
 
     // Compose navigation
     implementation("androidx.navigation:navigation-compose:2.9.7")
+    implementation(libs.androidx.junit.ktx)
+    implementation(libs.androidx.room.compiler)
 
     // Room
-    implementation("androidx.room:room-runtime:2.8.4")
-    kapt("androidx.room:room-compiler:2.8.4")
-    implementation("androidx.room:room-ktx:2.8.4")
+    val room_version = "2.6.1"
+    implementation("androidx.room:room-runtime:$room_version")
+    implementation("androidx.room:room-ktx:$room_version")
+    // Use KSP instead of KAPT
+    ksp("androidx.room:room-compiler:$room_version")
 
     //corutines.
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-core:1.10.2")
@@ -67,10 +75,14 @@ dependencies {
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.10.2")
 
     testImplementation(libs.junit)
+    // Testing helper for Room
+    testImplementation("androidx.room:room-testing:$room_version")
+
     androidTestImplementation(libs.androidx.junit)
     androidTestImplementation(libs.androidx.espresso.core)
     androidTestImplementation(platform(libs.androidx.compose.bom))
     androidTestImplementation(libs.androidx.compose.ui.test.junit4)
     debugImplementation(libs.androidx.compose.ui.tooling)
     debugImplementation(libs.androidx.compose.ui.test.manifest)
+    testImplementation(kotlin("test"))
 }

@@ -6,7 +6,9 @@ import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
+import androidx.compose.ui.test.performTextClearance
 import androidx.compose.ui.test.performTextInput
+import androidx.compose.ui.test.performTextReplacement
 import androidx.compose.ui.test.performTouchInput
 import androidx.compose.ui.test.swipeLeft
 import androidx.navigation.compose.NavHost
@@ -141,6 +143,128 @@ class NotesAppTest {
                 .onNodeWithText("test1")
                 .assertIsDisplayed()
     }
+
+    @Test
+    fun edit_note_flow_test() {
+
+        // 1️⃣ Verify we are on NotesListScreen
+        composeTestRule
+            .onNodeWithTag("notes_list")
+            .assertIsDisplayed()
+
+        // 2️⃣ Click FAB
+        composeTestRule
+            .onNodeWithTag("fab_add_note")
+            .performClick()
+
+        // 3️⃣ Verify AddEditNoteScreen opened
+        composeTestRule
+            .onNodeWithTag("title_input")
+            .assertIsDisplayed()
+
+        // 4️⃣ Enter text
+        composeTestRule
+            .onNodeWithTag("title_input")
+            .performTextInput("test1")
+
+        composeTestRule
+            .onNodeWithTag("content_input")
+            .performTextInput("test1")
+
+        // 5️⃣ Press Save
+        composeTestRule
+            .onNodeWithTag("save_note")
+            .performClick()
+
+        // 6️⃣ Verify back to NotesListScreen
+        composeTestRule
+            .onNodeWithTag("notes_list")
+            .assertIsDisplayed()
+
+        // 7️⃣ Verify note added (Wait up to 3 seconds for it to appear)
+        composeTestRule.waitUntil(3000) {
+            composeTestRule
+                .onAllNodesWithText("test1")
+                .fetchSemanticsNodes().isNotEmpty()
+        }
+
+        // 6️⃣ Give the async database operation a moment
+        composeTestRule.waitForIdle()
+
+        composeTestRule
+            .onNodeWithText("test1")
+            .assertIsDisplayed()
+
+        // --- NEW STEPS ADDED BELOW ---
+
+        // 9️⃣ Click on the newly added note to open it for editing
+        composeTestRule
+            .onNodeWithText("test1")
+            .performClick()
+
+        // 🔟 Verify AddEditNoteScreen is opened again and perform text replacements
+        /*
+        composeTestRule
+            .onNodeWithTag("title_input")
+            .assertIsDisplayed()
+            .performTextReplacement("test1_edited_title")
+
+        composeTestRule
+            .onNodeWithTag("content_input")
+            .performTextReplacement("test1_edited_content")
+
+         */
+
+        // Robust way to replace text: Clear then Type
+        composeTestRule.onNodeWithTag("title_input").performTextClearance()
+        composeTestRule.onNodeWithTag("title_input").performTextInput("test1_edited_title")
+
+        composeTestRule.onNodeWithTag("content_input").performTextClearance()
+        composeTestRule.onNodeWithTag("content_input").performTextInput("test1_edited_content")
+
+        composeTestRule.waitForIdle()
+
+        // 1️⃣1️⃣ Press Save again
+        composeTestRule
+            .onNodeWithTag("save_note")
+            .performClick()
+
+        // 1️⃣2️⃣ Verify back to NotesListScreen
+        composeTestRule
+            .onNodeWithTag("notes_list")
+            .assertIsDisplayed()
+
+        // 1️⃣3️⃣ Verify the note is updated with the new text
+        composeTestRule.waitUntil(5000) {
+            composeTestRule
+                .onAllNodesWithText("test1_edited_title", useUnmergedTree = true)
+                .fetchSemanticsNodes().isNotEmpty()
+        }
+
+        // Ensure the old title is GONE
+        composeTestRule
+            .onNodeWithText("test1")
+            .assertDoesNotExist()
+
+        // Now assert the new content
+        composeTestRule
+            .onNodeWithText("test1_edited_title", useUnmergedTree = true)
+            .assertIsDisplayed()
+
+        composeTestRule.waitForIdle()
+
+        // Assert the edited title and content are displayed
+        composeTestRule
+            .onNodeWithText("test1_edited_title",useUnmergedTree=true)
+            .assertIsDisplayed()
+
+        composeTestRule
+            .onNodeWithText("test1_edited_content",useUnmergedTree=true)
+            .assertIsDisplayed()
+
+
+    }
+
 
     @Test
     fun swipe_to_delete_test() {
