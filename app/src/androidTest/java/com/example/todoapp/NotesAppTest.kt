@@ -1,6 +1,7 @@
 package com.example.todoapp
 
 import androidx.compose.ui.test.assertIsDisplayed
+import androidx.compose.ui.test.assertTextContains
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onNodeWithTag
@@ -202,6 +203,7 @@ class NotesAppTest {
             .onNodeWithText("test1")
             .performClick()
 
+
         // 🔟 Verify AddEditNoteScreen is opened again and perform text replacements
         /*
         composeTestRule
@@ -228,6 +230,8 @@ class NotesAppTest {
         composeTestRule
             .onNodeWithTag("save_note")
             .performClick()
+
+        composeTestRule.waitForIdle()
 
         // 1️⃣2️⃣ Verify back to NotesListScreen
         composeTestRule

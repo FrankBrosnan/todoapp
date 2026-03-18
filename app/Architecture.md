@@ -58,4 +58,5 @@ Repository is a singleton to provide access to it.
 NavGraph scoped models
 In memory db instrumentation tests.
 Moved from kapt to kts with Room.
+UI Reacting on Class NotesUiState which encapsulated the state of the Model.
 

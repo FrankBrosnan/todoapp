@@ -15,9 +15,14 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.unit.dp
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.example.todoapp.viewmodel.NotesViewModel
 import androidx.navigation.NavController
+import com.example.todoapp.gui.composables.NoteItem
+import com.example.todoapp.model.Note
+import com.example.todoapp.viewmodel.NotesUiState
 
+/*
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun NotesListScreen(navController: NavController, viewModel: NotesViewModel) {
@@ -108,6 +113,8 @@ fun NotesListScreen(navController: NavController, viewModel: NotesViewModel) {
                     }
                 }
             }
+
+
         }
     }
 
@@ -124,3 +131,136 @@ fun NotesListScreen(navController: NavController, viewModel: NotesViewModel) {
         }
     }
 }
+ */
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun NotesListScreen(navController: NavController, viewModel: NotesViewModel) {
+
+    val uiState by viewModel.uiState.collectAsStateWithLifecycle()
+
+    val snackbarHostState = remember { SnackbarHostState() }
+
+    Scaffold(
+        floatingActionButton = {
+            FloatingActionButton(
+                modifier = Modifier.testTag("fab_add_note"),
+                onClick = { navController.navigate("add_edit_note") }) {
+                Text("+")
+            }
+        },
+        snackbarHost = { SnackbarHost(snackbarHostState) }
+    )
+    { padding ->
+        // Your main screen content goes here.
+        // Make sure to apply the 'paddingValues' to your top-level layout (e.g. Box, Column, or LazyColumn)
+        Box(modifier = Modifier.padding(padding).fillMaxSize()) {
+            // TODO: Display notes using uiState
+
+            when (uiState) {
+
+                is NotesUiState.Loading -> {
+                    if (uiState.isLoading) {
+                        CircularProgressIndicator()
+                    }
+                }
+
+                is NotesUiState.Empty -> {
+                    Text("No notes",modifier = Modifier.testTag("notes_list"))
+                }
+
+                is NotesUiState.Success -> {
+
+                    LazyColumn(
+                        contentPadding = padding,
+                        modifier = Modifier.testTag("notes_list").fillMaxSize()
+                    ) {
+                        // Using items(notes) with a key for smooth animations and stability
+                        items(
+                            items = uiState.notes,
+                            key = { it.id }
+                        ) { note ->
+                            val dismissState = rememberSwipeToDismissBoxState(
+                                confirmValueChange = { value ->
+                                    if (value == SwipeToDismissBoxValue.EndToStart) {
+                                        viewModel.deleteNote(note)
+                                        true
+                                    } else {
+                                        false
+                                    }
+                                }
+                            )
+
+                            SwipeToDismissBox(
+                                state = dismissState,
+                                enableDismissFromStartToEnd = false, // Swipe Left only
+                                backgroundContent = {
+                                    val color = when (dismissState.dismissDirection) {
+                                        SwipeToDismissBoxValue.EndToStart -> MaterialTheme.colorScheme.errorContainer
+                                        else -> Color.Transparent
+                                    }
+                                    Box(
+                                        modifier = Modifier
+                                            .fillMaxSize()
+                                            .background(color)
+                                            .padding(horizontal = 20.dp),
+                                        contentAlignment = Alignment.CenterEnd
+                                    ) {
+                                        Icon(
+                                            imageVector = Icons.Default.Delete,
+                                            contentDescription = "Delete",
+                                            tint = MaterialTheme.colorScheme.onErrorContainer
+                                        )
+                                    }
+                                }
+                            ) {
+                                Card(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .padding(8.dp)
+                                        .clickable { navController.navigate("add_edit_note?noteId=${note.id}") },
+                                    colors = CardDefaults.cardColors(
+                                        containerColor = MaterialTheme.colorScheme.surfaceVariant
+                                    )
+                                ) {
+                                    Column(Modifier.padding(16.dp)) {
+                                        Text(text = note.title, modifier = Modifier.testTag("note_title_${note.id}"), style = MaterialTheme.typography.titleMedium)
+                                        Spacer(Modifier.height(4.dp))
+                                        Text(text = note.content, style = MaterialTheme.typography.bodyMedium)
+                                    }
+                                }
+                            }
+                        }
+                    }
+
+                    LaunchedEffect(Unit) {
+                        viewModel.showUndoEvent.collect {
+                            val result = snackbarHostState.showSnackbar(
+                                message = "Note deleted",
+                                actionLabel = "Undo",
+                                duration = SnackbarDuration.Short
+                            )
+                            if (result == SnackbarResult.ActionPerformed) {
+                                viewModel.undoDelete()
+                            }
+                        }
+                    }
+
+
+
+
+
+                }//end is Success
+
+                is NotesUiState.Error -> {
+                    Text("Something went wrong")
+                }
+            }
+
+
+        }
+
+
+    }
+}
+
