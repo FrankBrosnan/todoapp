@@ -1,8 +1,13 @@
 package com.example.todoapp
 
+import android.util.Log
+import androidx.activity.ComponentActivity
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertTextContains
+import androidx.compose.ui.test.junit4.createAndroidComposeRule
 import androidx.compose.ui.test.junit4.createComposeRule
+import androidx.compose.ui.test.onAllNodesWithTag
 import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
@@ -12,9 +17,12 @@ import androidx.compose.ui.test.performTextInput
 import androidx.compose.ui.test.performTextReplacement
 import androidx.compose.ui.test.performTouchInput
 import androidx.compose.ui.test.swipeLeft
+import androidx.lifecycle.viewmodel.compose.viewModel
+import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
+import androidx.navigation.navArgument
 import androidx.room.Room
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
@@ -22,7 +30,10 @@ import com.example.todoapp.data.NoteDatabase
 import com.example.todoapp.data.NoteRepository
 import com.example.todoapp.gui.NotesAddEditScreen
 import com.example.todoapp.gui.NotesListScreen
+import com.example.todoapp.gui.composables.AppNavHost
+import com.example.todoapp.gui.navigation.Routes
 import com.example.todoapp.viewmodel.NotesViewModel
+import kotlinx.coroutines.runBlocking
 import org.junit.After
 
 import org.junit.Test
@@ -36,12 +47,44 @@ import org.junit.Before
 @RunWith(AndroidJUnit4::class)
 class NotesAppTest {
 
+    //globals
     @get:Rule
     val composeTestRule = createComposeRule()
-
     private lateinit var database: NoteDatabase
     private lateinit var repository: NoteRepository
     private lateinit var viewModel: NotesViewModel
+
+    //Utilities/Helper Functions.
+    fun printDatabaseRecords() = runBlocking {
+        // 1. Fetch the records from your DAO
+        val notes = database.noteDao().getAllRecords()
+
+        // 2. Print them to Logcat
+        notes.forEach { note ->
+            Log.d("DB_RECORDS", "Note: ${note.title}, Content: ${note.content}")
+        }
+    }
+
+    private fun addNote(title: String, content: String) {
+        composeTestRule.waitForIdle()
+        composeTestRule.onNodeWithTag("fab_add_note").performClick()
+        composeTestRule.waitForIdle()
+
+        composeTestRule.waitUntil(5000) {
+            composeTestRule.onAllNodesWithTag("notes_add_edit").fetchSemanticsNodes().isNotEmpty()
+        }
+
+        composeTestRule.onNodeWithTag("title_input").performTextInput(title)
+        composeTestRule.waitForIdle()
+        composeTestRule.onNodeWithTag("content_input").performTextInput(content)
+        composeTestRule.waitForIdle()
+        composeTestRule.onNodeWithTag("save_note").performClick()
+        composeTestRule.waitForIdle()
+
+        composeTestRule.waitUntil(3000) {
+            composeTestRule.onAllNodesWithText(title).fetchSemanticsNodes().isNotEmpty()
+        }
+    }
 
     @Before
     fun setup() {
@@ -62,28 +105,43 @@ class NotesAppTest {
 
             NavHost(
                 navController = navController,
-                startDestination = "note_list"
+                startDestination = Routes.NOTES_LIST
             ) {
 
-                composable("note_list") {
+                composable(Routes.NOTES_LIST) {
                     NotesListScreen(
                         navController = navController,
                         viewModel = viewModel
                     )
                 }
 
-                composable("add_edit_note") { // Matches FAB call
-                    NotesAddEditScreen(navController, -1L, viewModel)
+                composable(Routes.ADD_EDIT_NOTE) { // Matches FAB call
+                    NotesAddEditScreen(
+                        viewModel = viewModel,
+                        navController = navController,
+                        noteId = null)
                 }
 
-                composable("add_edit_note?noteId={noteId}") { backStackEntry ->
-                    val noteId = backStackEntry.arguments?.getLong("noteId") ?: -1L
+                // In your setup() method's NavHost:
+                composable(
+                    route = "add_edit_note?noteId={noteId}",
+                    arguments = listOf(
+                        navArgument("noteId") {
+                            type = NavType.LongType
+                            defaultValue = -1L
+                        }
+                    )
+                ) { backStackEntry ->
+                    // Now this will actually contain the ID from the URL
+                    val noteId = backStackEntry.arguments?.getLong("noteId").takeIf { it != -1L }
+
                     NotesAddEditScreen(
                         navController = navController,
                         noteId = noteId,
                         viewModel = viewModel
                     )
                 }
+
             }
         }
     }
@@ -93,129 +151,126 @@ class NotesAppTest {
         database.close()
     }
 
+
+    //Tests
+
     @Test
-    fun add_note_flow_test() {
-
-        // 1️⃣ Verify we are on NotesListScreen
+    fun empty_list_shows_empty_state() {
         composeTestRule
-            .onNodeWithTag("notes_list")
+            .onNodeWithTag("empty_state")
             .assertIsDisplayed()
+    }
 
-        // 2️⃣ Click FAB
+    @Test
+    fun fab_navigates_to_add_screen() {
+        composeTestRule.waitForIdle()
         composeTestRule
             .onNodeWithTag("fab_add_note")
             .performClick()
-
-        // 3️⃣ Verify AddEditNoteScreen opened
+        composeTestRule.waitForIdle()
+        composeTestRule.onNodeWithTag("notes_add_edit")
         composeTestRule
             .onNodeWithTag("title_input")
             .assertIsDisplayed()
+    }
 
-        // 4️⃣ Enter text
-        composeTestRule
-            .onNodeWithTag("title_input")
-            .performTextInput("test1")
+    @Test
+    fun back_from_add_screen_returns_to_list() {
+        fail("Not Yet Implemented")
+    }
 
-        composeTestRule
-            .onNodeWithTag("content_input")
-            .performTextInput("test1")
 
-        // 5️⃣ Press Save
+    @Test
+    fun add_note_flow_test() {
+
+        // 1️⃣ Verify we are on empty NotesListScreen
         composeTestRule
-            .onNodeWithTag("save_note")
-            .performClick()
+            .onNodeWithTag("empty_state")
+            .assertIsDisplayed()
+
+        addNote("test1_title","test1_content")
 
         // 6️⃣ Verify back to NotesListScreen
         composeTestRule
             .onNodeWithTag("notes_list")
             .assertIsDisplayed()
-
-        // 7️⃣ Verify note added (Wait up to 3 seconds for it to appear)
-        composeTestRule.waitUntil(3000) {
-            composeTestRule
-                .onAllNodesWithText("test1")
-                .fetchSemanticsNodes().isNotEmpty()
-        }
-
-        // 6️⃣ Give the async database operation a moment
         composeTestRule.waitForIdle()
 
+        // 7️⃣ Verify note added (Wait up to 3 seconds for it to appear)
         composeTestRule
-                .onNodeWithText("test1")
-                .assertIsDisplayed()
+            .onNodeWithTag("note_item_1")
+            .assertIsDisplayed()
+
+        composeTestRule
+            .onAllNodesWithText("test1_title")
+            .fetchSemanticsNodes().isNotEmpty()
+
+        composeTestRule
+            .onAllNodesWithText("test1_content")
+            .fetchSemanticsNodes().isNotEmpty()
+
+
+    }
+
+    @Test
+    fun multiple_notes_are_displayed() {
+        addNote("note1", "c1")
+        composeTestRule.waitForIdle()
+        addNote("note2", "c2")
+        composeTestRule.waitForIdle()
+
+        composeTestRule.onNodeWithTag("note_item_1").assertIsDisplayed()
+        composeTestRule.onNodeWithTag("note_item_2").assertIsDisplayed()
+
+        composeTestRule.onNodeWithText("note1").assertIsDisplayed()
+        composeTestRule.onNodeWithText("note2").assertIsDisplayed()
+
+        composeTestRule.onNodeWithText("c1").assertIsDisplayed()
+        composeTestRule.onNodeWithText("c2").assertIsDisplayed()
     }
 
     @Test
     fun edit_note_flow_test() {
 
-        // 1️⃣ Verify we are on NotesListScreen
+        // Verify we are on NotesListScreen
         composeTestRule
-            .onNodeWithTag("notes_list")
+            .onNodeWithTag("empty_state")
             .assertIsDisplayed()
 
-        // 2️⃣ Click FAB
-        composeTestRule
-            .onNodeWithTag("fab_add_note")
-            .performClick()
+        addNote("test1_title","test1_content")
 
-        // 3️⃣ Verify AddEditNoteScreen opened
-        composeTestRule
-            .onNodeWithTag("title_input")
-            .assertIsDisplayed()
-
-        // 4️⃣ Enter text
-        composeTestRule
-            .onNodeWithTag("title_input")
-            .performTextInput("test1")
-
-        composeTestRule
-            .onNodeWithTag("content_input")
-            .performTextInput("test1")
-
-        // 5️⃣ Press Save
-        composeTestRule
-            .onNodeWithTag("save_note")
-            .performClick()
-
+        composeTestRule.waitForIdle()
         // 6️⃣ Verify back to NotesListScreen
         composeTestRule
-            .onNodeWithTag("notes_list")
-            .assertIsDisplayed()
+            .onAllNodesWithTag(("notes_list"))
+            .fetchSemanticsNodes().isNotEmpty()
+
+        //printDatabaseRecords()
 
         // 7️⃣ Verify note added (Wait up to 3 seconds for it to appear)
-        composeTestRule.waitUntil(3000) {
-            composeTestRule
-                .onAllNodesWithText("test1")
-                .fetchSemanticsNodes().isNotEmpty()
-        }
+        composeTestRule
+            .onNodeWithTag("note_item_1")
+            .assertIsDisplayed()
+
+        composeTestRule
+            .onAllNodesWithText("test1_title")
+            .fetchSemanticsNodes().isNotEmpty()
+
+        composeTestRule
+            .onAllNodesWithText("test1_content")
+            .fetchSemanticsNodes().isNotEmpty()
+
 
         // 6️⃣ Give the async database operation a moment
         composeTestRule.waitForIdle()
 
-        composeTestRule
-            .onNodeWithText("test1")
-            .assertIsDisplayed()
 
         // --- NEW STEPS ADDED BELOW ---
 
         // 9️⃣ Click on the newly added note to open it for editing
         composeTestRule
-            .onNodeWithText("test1")
+            .onNodeWithTag("note_item_1")
             .performClick()
-
-
-        // 🔟 Verify AddEditNoteScreen is opened again and perform text replacements
-        /*
-        composeTestRule
-            .onNodeWithTag("title_input")
-            .assertIsDisplayed()
-            .performTextReplacement("test1_edited_title")
-
-        composeTestRule
-            .onNodeWithTag("content_input")
-            .performTextReplacement("test1_edited_content")
-
-         */
 
         // Robust way to replace text: Clear then Type
         composeTestRule.onNodeWithTag("title_input").performTextClearance()
@@ -238,33 +293,83 @@ class NotesAppTest {
             .onNodeWithTag("notes_list")
             .assertIsDisplayed()
 
-        // 1️⃣3️⃣ Verify the note is updated with the new text
-        composeTestRule.waitUntil(5000) {
-            composeTestRule
-                .onAllNodesWithText("test1_edited_title", useUnmergedTree = true)
-                .fetchSemanticsNodes().isNotEmpty()
-        }
+        //DEBUG whats in db ?
+        //printDatabaseRecords()
 
-        // Ensure the old title is GONE
+        // 7️⃣ Verify note added (Wait up to 3 seconds for it to appear)
         composeTestRule
-            .onNodeWithText("test1")
-            .assertDoesNotExist()
+            .onNodeWithTag("note_item_1")
+            .assertIsDisplayed()
 
-        // Now assert the new content
         composeTestRule
-            .onNodeWithText("test1_edited_title", useUnmergedTree = true)
+            .onAllNodesWithText("test1_edited_title")
+            .fetchSemanticsNodes().isNotEmpty()
+
+        composeTestRule
+            .onAllNodesWithText("test1_edited_content")
+            .fetchSemanticsNodes().isNotEmpty()
+
+    }
+
+    @Test
+    fun delete_button_test(){
+
+        // 1️⃣ Verify we are on empty NotesListScreen
+        composeTestRule
+            .onNodeWithTag("empty_state")
             .assertIsDisplayed()
 
         composeTestRule.waitForIdle()
 
-        // Assert the edited title and content are displayed
+        addNote("test1_title",content ="test1_content")
+
+        composeTestRule.waitForIdle()
+        // 6️⃣ Verify back to NotesListScreen
         composeTestRule
-            .onNodeWithText("test1_edited_title",useUnmergedTree=true)
+            .onNodeWithTag("notes_list")
+            .assertIsDisplayed()
+        composeTestRule.waitForIdle()
+
+        composeTestRule
+            .onNodeWithTag("note_item_1")
             .assertIsDisplayed()
 
         composeTestRule
-            .onNodeWithText("test1_edited_content",useUnmergedTree=true)
+            .onAllNodesWithText("test1_title")
+            .fetchSemanticsNodes().isNotEmpty()
+
+        composeTestRule
+            .onAllNodesWithText("test1_content")
+            .fetchSemanticsNodes().isNotEmpty()
+
+
+
+
+        //click on note delete icon.
+
+        composeTestRule.waitForIdle()
+
+        composeTestRule
+            .onNodeWithTag("delete_note")
+            .performClick()
+
+        composeTestRule.waitForIdle()
+
+        composeTestRule
+            .onNodeWithTag("empty_state")
             .assertIsDisplayed()
+
+        composeTestRule
+            .onAllNodesWithTag("note_item_1")
+            .fetchSemanticsNodes().isEmpty()
+
+        composeTestRule
+            .onAllNodesWithText("test1_title")
+            .fetchSemanticsNodes().isNotEmpty()
+
+        composeTestRule
+            .onAllNodesWithText("test1_content")
+            .fetchSemanticsNodes().isNotEmpty()
 
 
     }

@@ -1,5 +1,6 @@
 package com.example.todoapp.gui
 
+import android.util.Log
 import androidx.compose.foundation.layout.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -12,8 +13,12 @@ import kotlinx.coroutines.launch
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.ui.platform.testTag
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.example.todoapp.gui.navigation.Routes
+import com.example.todoapp.viewmodel.NotesUiEvent
 
 
+/*
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun NotesAddEditScreen(
@@ -23,6 +28,8 @@ fun NotesAddEditScreen(
 ) {
 
     val scope = rememberCoroutineScope()
+    val uiState by viewModel.addEditUiState.collectAsStateWithLifecycle()
+    val snackbarHostState: SnackbarHostState = remember { SnackbarHostState() }
 
     val existingNote by produceState<Note?>(initialValue = null, key1 = noteId) {
         if (noteId != -1L) value = viewModel.getNoteById(noteId)
@@ -32,19 +39,37 @@ fun NotesAddEditScreen(
     var content by remember { mutableStateOf("") }
     var showDeleteDialog by remember { mutableStateOf(false) }
 
-    LaunchedEffect(existingNote) {
-        existingNote?.let {
-            title = it.title
-            content = it.content
+    // Load note when screen starts
+    LaunchedEffect(noteId) {
+        noteId?.let { viewModel.loadNote(it) }
+    }
+
+    // Collect events for navigation and snackbar
+    LaunchedEffect(Unit) {
+        viewModel.events.collect { event ->
+            when (event) {
+                is NotesUiEvent.ShowSnackbar -> {
+                    val result = snackbarHostState.showSnackbar(
+                        message = event.message,
+                        actionLabel = event.action
+                    )
+                    if (result == SnackbarResult.ActionPerformed) {
+                        viewModel.undoDelete()
+                    }
+                }
+                is NotesUiEvent.Navigate -> {
+                    println("Navigate to ${event.route}") // Replace with NavController
+                }
+            }
         }
     }
 
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text(if (noteId == -1L) "Add Note" else "Edit Note") },
+                title = { Text(if (noteId == null) "Add Note" else "Edit Note") },
                 actions = {
-                    if (noteId != -1L) {
+                    if (noteId != null) {
                         IconButton(
                             onClick = { showDeleteDialog = true },
                             modifier = Modifier.testTag("action_delete")
@@ -89,7 +114,7 @@ fun NotesAddEditScreen(
             Button(
                 onClick = {
                     scope.launch {
-                        if (noteId == -1L) {
+                        if (noteId == null) {
                             viewModel.addNote(title, content)
                         } else {
                             existingNote?.let {
@@ -103,7 +128,7 @@ fun NotesAddEditScreen(
                 },
                 modifier = Modifier.fillMaxWidth().testTag("save_note")
             ) {
-                Text(if (noteId == -1L) "Save" else "Update")
+                Text(if (noteId == null) "Save" else "Update")
             }
         }
     }
@@ -131,5 +156,91 @@ fun NotesAddEditScreen(
             title = { Text("Delete Note") },
             text = { Text("Are you sure you want to delete this note?") }
         )
+    }
+}
+*/
+
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun NotesAddEditScreen(
+    viewModel: NotesViewModel,
+    navController: NavController,
+    noteId: Long? = null
+) {
+
+    val uiState by viewModel.addEditUiState.collectAsStateWithLifecycle()
+    val snackbarHostState: SnackbarHostState = remember { SnackbarHostState() }
+
+    // Load note when screen starts
+    LaunchedEffect(noteId) {
+        viewModel.init(noteId)
+    }
+
+    // Collect events for navigation and snackbar
+    LaunchedEffect(Unit) {
+        viewModel.events.collect { event ->
+            when (event) {
+                is NotesUiEvent.ShowSnackbar -> {
+                    val result = snackbarHostState.showSnackbar(
+                        message = event.message,
+                        actionLabel = event.action
+                    )
+                    if (result == SnackbarResult.ActionPerformed) {
+                        viewModel.undoDelete()
+                    }
+                }
+                is NotesUiEvent.Navigate -> {
+                    navController.navigate(event.route) {
+                        popUpTo(Routes.NOTES_LIST)
+                    }
+                }
+            }
+        }
+    }
+
+    Scaffold(
+        topBar = {
+            TopAppBar(title = { Text(if (noteId == null) "Add Note" else "Edit Note") })
+        },
+        floatingActionButton = {
+            FloatingActionButton(onClick = { viewModel.saveNote(noteId) },
+                                 modifier = Modifier.fillMaxWidth().testTag("save_note")
+            ) {
+                Text("Save")
+            }
+        }
+    ) { padding ->
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(padding)
+                .padding(16.dp)
+                .testTag("notes_add_edit")
+        ) {
+            OutlinedTextField(
+                value = uiState.title,
+                onValueChange = { viewModel.updateTitle(it) },
+                label = { Text("Title") },
+                modifier = Modifier.fillMaxWidth().testTag("title_input")
+            )
+            Spacer(modifier = Modifier.height(8.dp))
+            OutlinedTextField(
+                value = uiState.content,
+                onValueChange = { viewModel.updateContent(it) },
+                label = { Text("Content") },
+                modifier = Modifier.fillMaxWidth().testTag(tag = "content_input")
+            )
+            Spacer(modifier = Modifier.height(16.dp))
+
+            if (noteId != null) {
+                Button(
+                    onClick = { viewModel.deleteCurrentNote(noteId) },
+                    colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error)
+                ) {
+                    Text("Delete")
+                }
+            }
+        }
     }
 }

@@ -14,6 +14,7 @@ import androidx.navigation.navArgument
 import com.example.todoapp.data.NoteRepository
 import com.example.todoapp.gui.NotesListScreen
 import com.example.todoapp.gui.NotesAddEditScreen
+import com.example.todoapp.gui.composables.AppNavHost
 import com.example.todoapp.viewmodel.NoteViewModelFactory
 import com.example.todoapp.viewmodel.NotesViewModel
 
@@ -28,56 +29,10 @@ class MainActivity : ComponentActivity() {
         setContent {
             MaterialTheme {
                 val navController = rememberNavController()
-                NavHost(
-                    navController = navController,
-                    startDestination = "note_list"
-                ) {
-                    //composable("note_list") {
-                    //    NotesListScreen(navController)
+                // SINGLE ViewModel instance
+                val viewModel: NotesViewModel = viewModel(factory = factory)
+                AppNavHost(navController, viewModel)
 
-                    //new code
-                    composable("note_list") { backStackEntry ->
-                        val parentEntry = remember(backStackEntry) {
-                            navController.getBackStackEntry("note_list")
-                        }
-                        //val viewModel: NotesViewModel = viewModel(parentEntry)
-                        // 2. Pass the factory here
-                        val viewModel: NotesViewModel = viewModel(
-                            viewModelStoreOwner = backStackEntry,
-                            factory = factory
-                        )
-
-                        NotesListScreen(
-                            navController = navController,
-                            viewModel = viewModel
-                        )
-                    }
-
-
-
-                    composable(
-                        route = "add_edit_note?noteId={noteId}",
-                        arguments = listOf(
-                            navArgument("noteId") {
-                                type = NavType.LongType
-                                defaultValue = -1L
-                            }
-                        )
-                    ) { backStackEntry ->
-                        val parentEntry = remember(backStackEntry) {navController.getBackStackEntry("note_list")}
-                        //val viewModel: NotesViewModel = viewModel(parentEntry)
-
-                        // 3. And pass the factory here if you want to share the same ViewModel
-                        val viewModel: NotesViewModel = viewModel(
-                            viewModelStoreOwner = parentEntry,
-                            factory = factory
-                        )
-
-                        //val noteId = backStackEntry.arguments?.getString("noteId")?.toLong() ?: -1L
-                        val noteId = backStackEntry.arguments?.getLong("noteId") ?: -1L
-                        NotesAddEditScreen(navController, noteId, viewModel = viewModel)
-                    }
-                }
             }
         }
     }
