@@ -1,11 +1,7 @@
 package com.example.todoapp
 
 import android.util.Log
-import androidx.activity.ComponentActivity
-import androidx.compose.material3.MaterialTheme
 import androidx.compose.ui.test.assertIsDisplayed
-import androidx.compose.ui.test.assertTextContains
-import androidx.compose.ui.test.junit4.createAndroidComposeRule
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onAllNodesWithTag
 import androidx.compose.ui.test.onAllNodesWithText
@@ -14,10 +10,8 @@ import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performTextClearance
 import androidx.compose.ui.test.performTextInput
-import androidx.compose.ui.test.performTextReplacement
 import androidx.compose.ui.test.performTouchInput
 import androidx.compose.ui.test.swipeLeft
-import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
@@ -28,9 +22,14 @@ import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
 import com.example.todoapp.data.NoteDatabase
 import com.example.todoapp.data.NoteRepository
-import com.example.todoapp.gui.NotesAddEditScreen
-import com.example.todoapp.gui.NotesListScreen
-import com.example.todoapp.gui.composables.AppNavHost
+import com.example.todoapp.domain.usecases.AddNoteUseCase
+import com.example.todoapp.domain.usecases.DeleteNoteUseCase
+import com.example.todoapp.domain.usecases.GetAllNotesUseCase
+import com.example.todoapp.domain.usecases.GetNoteUseCase
+import com.example.todoapp.domain.usecases.NoteUseCases
+import com.example.todoapp.domain.usecases.UpdateNoteUseCase
+import com.example.todoapp.gui.composables.NotesAddEditScreen
+import com.example.todoapp.gui.composables.NotesListScreen
 import com.example.todoapp.gui.navigation.Routes
 import com.example.todoapp.viewmodel.NotesViewModel
 import kotlinx.coroutines.runBlocking
@@ -86,6 +85,26 @@ class NotesAppTest {
         }
     }
 
+    private fun waitForNoteToAppear(title: String) {
+        composeTestRule.waitUntil(5000) {
+            composeTestRule
+                .onAllNodesWithText(title)
+                .fetchSemanticsNodes()
+                .isNotEmpty()
+        }
+    }
+
+    private fun waitForNoteToDisappear(title: String) {
+        composeTestRule.waitUntil(5000) {
+            composeTestRule
+                .onAllNodesWithText(title)
+                .fetchSemanticsNodes()
+                .isEmpty()
+        }
+    }
+
+
+
     @Before
     fun setup() {
         val context = InstrumentationRegistry
@@ -98,7 +117,16 @@ class NotesAppTest {
         ).allowMainThreadQueries().build()
 
         repository = NoteRepository(database.noteDao())
-        viewModel = NotesViewModel(repository)
+
+        val useCases = NoteUseCases(
+            addNote = AddNoteUseCase(repository),
+            deleteNote = DeleteNoteUseCase(repository),
+            updateNote = UpdateNoteUseCase(repository),
+            getAllNotes = GetAllNotesUseCase(repository),
+            getNote = GetNoteUseCase(repository)
+        )
+
+        viewModel = NotesViewModel(useCases)
 
         composeTestRule.setContent {
             val navController = rememberNavController()
@@ -311,69 +339,6 @@ class NotesAppTest {
 
     }
 
-    @Test
-    fun delete_button_test(){
-
-        // 1️⃣ Verify we are on empty NotesListScreen
-        composeTestRule
-            .onNodeWithTag("empty_state")
-            .assertIsDisplayed()
-
-        composeTestRule.waitForIdle()
-
-        addNote("test1_title",content ="test1_content")
-
-        composeTestRule.waitForIdle()
-        // 6️⃣ Verify back to NotesListScreen
-        composeTestRule
-            .onNodeWithTag("notes_list")
-            .assertIsDisplayed()
-        composeTestRule.waitForIdle()
-
-        composeTestRule
-            .onNodeWithTag("note_item_1")
-            .assertIsDisplayed()
-
-        composeTestRule
-            .onAllNodesWithText("test1_title")
-            .fetchSemanticsNodes().isNotEmpty()
-
-        composeTestRule
-            .onAllNodesWithText("test1_content")
-            .fetchSemanticsNodes().isNotEmpty()
-
-
-
-
-        //click on note delete icon.
-
-        composeTestRule.waitForIdle()
-
-        composeTestRule
-            .onNodeWithTag("delete_note")
-            .performClick()
-
-        composeTestRule.waitForIdle()
-
-        composeTestRule
-            .onNodeWithTag("empty_state")
-            .assertIsDisplayed()
-
-        composeTestRule
-            .onAllNodesWithTag("note_item_1")
-            .fetchSemanticsNodes().isEmpty()
-
-        composeTestRule
-            .onAllNodesWithText("test1_title")
-            .fetchSemanticsNodes().isNotEmpty()
-
-        composeTestRule
-            .onAllNodesWithText("test1_content")
-            .fetchSemanticsNodes().isNotEmpty()
-
-
-    }
-
 
     @Test
     fun swipe_to_delete_test() {
@@ -450,6 +415,73 @@ class NotesAppTest {
 
         // Optional: If you want to verify the snackbar shows up
         //composeTestRule.onNodeWithText("Note deleted", ignoreCase = true).assertIsDisplayed()
+    }
+
+    @Test
+    fun undo_delete_restores_note() {
+
+        // Add note
+        composeTestRule
+            .onNodeWithTag("fab_add_note")
+            .performClick()
+
+        composeTestRule
+            .onNodeWithTag("title_input")
+            .performTextInput("Undo Test")
+
+        composeTestRule
+            .onNodeWithTag("save_note")
+            .performClick()
+
+        composeTestRule.waitUntil(3000) {
+            composeTestRule
+                .onAllNodesWithText("Undo Test")
+                .fetchSemanticsNodes()
+                .isNotEmpty()
+        }
+
+        // Verify note exists
+        composeTestRule
+            .onNodeWithText("Undo Test")
+            .assertIsDisplayed()
+
+        // Swipe delete
+        composeTestRule
+            .onNodeWithText("Undo Test")
+            .performTouchInput {
+                swipeLeft(
+                    startX = right,
+                    endX = left,
+                    durationMillis = 5000
+                )
+            }
+
+
+        // Verify note removed
+
+        waitForNoteToDisappear("Undo Test")
+
+        // Wait for snackbar
+        composeTestRule.waitUntil(5000) {
+            composeTestRule
+                .onAllNodesWithText("Undo", ignoreCase = true)
+                .fetchSemanticsNodes()
+                .isNotEmpty()
+        }
+
+        // Click Undo
+        composeTestRule
+            .onNodeWithText("Undo", ignoreCase = true)
+            .performClick()
+
+        composeTestRule.waitForIdle()
+
+        // Verify note restored
+        waitForNoteToAppear("Undo Test")
+
+        composeTestRule
+            .onNodeWithText("Undo Test")
+            .assertIsDisplayed()
     }
 
 }

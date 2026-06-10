@@ -6,17 +6,17 @@ import com.example.todoapp.model.Note
 import kotlinx.coroutines.flow.Flow
 
 //class NoteRepository private constructor(context: Context) {
-class NoteRepository(private val dao: NoteDao) {
+class NoteRepository(private val dao: NoteDao) : INoteRepository{
 
 
-    fun getAllNotes(): Flow<List<Note>> = dao.getAllNotes()
+    override fun getAllNotes(): Flow<List<Note>> = dao.getAllNotes()
 
-    suspend fun insert(note: Note) = dao.insert(note)
-    suspend fun delete(note: Note) = dao.delete(note)
+    override suspend fun insert(note: Note) = dao.insert(note)
+    override suspend fun delete(note: Note) = dao.delete(note)
 
-    suspend fun getById(id: Long) = dao.getById(id)
+    override suspend fun getById(id: Long) = dao.getById(id)
 
-    suspend fun update(note: Note) = dao.update(note)
+    override suspend fun update(note: Note) = dao.update(note)
 
 
     companion object {

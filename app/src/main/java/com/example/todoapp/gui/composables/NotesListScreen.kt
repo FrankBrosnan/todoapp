@@ -1,6 +1,5 @@
-package com.example.todoapp.gui
+package com.example.todoapp.gui.composables
 
-import android.util.Log
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -11,9 +10,19 @@ import androidx.compose.ui.platform.testTag
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.example.todoapp.viewmodel.NotesViewModel
 import androidx.navigation.NavController
-import com.example.todoapp.gui.composables.NoteItem
-import com.example.todoapp.viewmodel.NotesListEvent
-import com.example.todoapp.viewmodel.NotesUiEvent
+import com.example.todoapp.viewmodel.events.NotesListEvent
+import com.example.todoapp.viewmodel.events.NotesUiEvent
+
+import androidx.compose.foundation.background
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.unit.dp
+
+// Required Imports
+import androidx.compose.material3.SwipeToDismissBox
+import androidx.compose.material3.rememberSwipeToDismissBoxState
+import androidx.compose.material3.SwipeToDismissBoxValue
+import androidx.compose.material3.SwipeToDismissBoxValue.*
 
 /*
 @OptIn(ExperimentalMaterial3Api::class)
@@ -137,7 +146,6 @@ fun NotesListScreen(navController: NavController, viewModel: NotesViewModel) {
         viewModel.events.collect { event ->
             when (event) {
                 is NotesUiEvent.ShowSnackbar -> {
-                    Log.d("SNACKBAR","showing snackbar")
                     val result = snackbarHostState.showSnackbar(
                         message = event.message,
                         actionLabel = event.action,
@@ -150,6 +158,10 @@ fun NotesListScreen(navController: NavController, viewModel: NotesViewModel) {
                 }
                 is NotesUiEvent.Navigate -> {
                     navController.navigate(event.route)
+                }
+
+                NotesUiEvent.PopBackStack -> {
+                    navController.popBackStack()
                 }
             }
         }
@@ -192,6 +204,7 @@ fun NotesListScreen(navController: NavController, viewModel: NotesViewModel) {
             }
 
             else {
+
                 LazyColumn(
                     modifier = Modifier
                         .fillMaxSize()
@@ -201,21 +214,53 @@ fun NotesListScreen(navController: NavController, viewModel: NotesViewModel) {
                         items = state.notes,
                         key = { it.id }
                     ) { note ->
-                        NoteItem(
-                            note = note,
-                            onClick = {
-                                viewModel.onEvent(
-                                    NotesListEvent.NoteClicked(note.id)
-                                )
-                            },
-                            onDelete = {
-                                viewModel.onEvent(
-                                    NotesListEvent.DeleteClicked(note.id)
-                                )
+
+                        val dismissState = rememberSwipeToDismissBoxState(
+                            confirmValueChange = { dismissValue ->
+                                if (dismissValue == EndToStart) {
+                                    viewModel.onEvent(
+                                        NotesListEvent.DeleteClicked(note.id)
+                                    )
+                                    true
+                                } else {
+                                    false
+                                }
                             }
                         )
+
+                        SwipeToDismissBox(
+                            state = dismissState,
+                            enableDismissFromStartToEnd = false, // Replaces 'directions'
+                            backgroundContent = { // Renamed from 'background'
+
+                                // Only show red if the user is swiping toward the start
+                                val isSwiping = dismissState.targetValue == SwipeToDismissBoxValue.EndToStart
+
+                                Box(
+                                    modifier = Modifier
+                                        .fillMaxSize()
+                                        .background(if (isSwiping) Color.Red else Color.Transparent)
+                                        .padding(16.dp),
+                                    contentAlignment = Alignment.CenterEnd
+                                ) {
+                                    Text("Delete", color = Color.White)
+                                }
+                            }
+                        ) { // This is the 'content' slot (replaces dismissContent)
+                            NoteItem(
+                                note = note,
+                                onClick = {
+                                    viewModel.onEvent(NotesListEvent.NoteClicked(note.id))
+                                }
+                            )
+                        }
+
+
                     }
                 }
+
+
+
             }
         }
 

@@ -15,7 +15,6 @@ import com.example.todoapp.model.Note
 @Composable
 fun NoteItem(note: Note,
              onClick:()->Unit,
-             onDelete: () -> Unit,
              modifier: Modifier=Modifier
              ) {
     Card(
@@ -23,13 +22,6 @@ fun NoteItem(note: Note,
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant),
         elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
     ) {
-
-            /*
-            Column(Modifier.padding(16.dp)) {
-            Text(text = note.title, modifier = Modifier.testTag("note_title_${note.id}"), style = MaterialTheme.typography.titleMedium)
-            Spacer(Modifier.height(4.dp))
-            Text(text = note.content, modifier = Modifier.testTag("note_content_${note.id}"),style = MaterialTheme.typography.bodyMedium)
-            */
 
         Column(
             modifier = Modifier.padding(16.dp).testTag("note_click_area_${note.id}")
@@ -56,19 +48,7 @@ fun NoteItem(note: Note,
 
             Spacer(modifier = Modifier.height(12.dp))
 
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.End
-            ) {
-                IconButton(onClick = onDelete,
-                    modifier = Modifier.testTag("delete_note"))
-                {
-                    Icon(
-                        imageVector = Icons.Default.Delete,
-                        contentDescription = "Delete Note"
-                    )
-                }
-            }
+
         }
 
 

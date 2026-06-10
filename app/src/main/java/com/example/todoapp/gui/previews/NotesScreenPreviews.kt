@@ -1,10 +1,12 @@
-package com.example.todoapp.gui
+package com.example.todoapp.gui.previews
 
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.material3.MaterialTheme
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.compose.rememberNavController
+import com.example.todoapp.gui.composables.NotesAddEditScreen
+import com.example.todoapp.gui.composables.NotesListScreen
 
 @Preview(showBackground = true)
 @Composable
@@ -18,6 +20,10 @@ fun NotesListScreenPreview() {
 @Composable
 fun NotesEditScreenPreview() {
     MaterialTheme {
-        NotesAddEditScreen(navController = rememberNavController(), noteId = -1,viewModel = viewModel())
+        NotesAddEditScreen(
+            navController = rememberNavController(),
+            noteId = -1,
+            viewModel = viewModel()
+        )
     }
 }

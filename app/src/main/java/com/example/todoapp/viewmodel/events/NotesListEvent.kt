@@ -1,4 +1,4 @@
-package com.example.todoapp.viewmodel
+package com.example.todoapp.viewmodel.events
 
 sealed class NotesListEvent {
     data class DeleteClicked(val noteId: Long) : NotesListEvent()

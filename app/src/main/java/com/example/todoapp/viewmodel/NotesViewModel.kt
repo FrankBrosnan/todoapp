@@ -3,9 +3,17 @@ package com.example.todoapp.viewmodel
 import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import androidx.navigation.NavController
 import com.example.todoapp.data.NoteRepository
+import com.example.todoapp.domain.usecases.NoteUseCases
 import com.example.todoapp.gui.navigation.Routes
 import com.example.todoapp.model.Note
+import com.example.todoapp.viewmodel.events.AddEditEvent
+import com.example.todoapp.viewmodel.events.NotesListEvent
+import com.example.todoapp.viewmodel.events.NotesUiEvent
+import com.example.todoapp.viewmodel.states.AddEditNoteUiState
+import com.example.todoapp.viewmodel.states.NotesListState
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -14,10 +22,10 @@ import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.flow.update
 
-class NotesViewModel(private val repository: NoteRepository) : ViewModel() {
+class NotesViewModel( private val useCases: NoteUseCases) : ViewModel() {
 
     // UI STATE
-    private val _state = MutableStateFlow< NotesListState>(
+    private val _state = MutableStateFlow<NotesListState>(
         NotesListState()
     )
     val state: StateFlow<NotesListState> = _state
@@ -35,10 +43,11 @@ class NotesViewModel(private val repository: NoteRepository) : ViewModel() {
     val events = _events.asSharedFlow()
 
     private var recentlyDeletedNote: Note? = null
+    private var currentNoteId: Long? = null
 
     init {
         viewModelScope.launch {
-            repository.getAllNotes()
+            useCases.getAllNotes()
                 .catch { e ->
                     _state.value = NotesListState(
                         error = e.message ?: "Unknown error"
@@ -54,41 +63,9 @@ class NotesViewModel(private val repository: NoteRepository) : ViewModel() {
     }
 
 
-
-    suspend fun addNote(title:String, content: String) {
-        viewModelScope.launch {
-            repository.insert(Note(title = title, content = content))
-            _events.emit(NotesUiEvent.Navigate("notes_list"))
-        }
-    }
-
-    suspend fun getNoteById(id: Long): Note? {
-        return repository.getById(id)
-    }
-
-    suspend fun updateNote(note: Note) {
-        viewModelScope.launch {
-            repository.update(note)
-            _events.emit(NotesUiEvent.Navigate(route = Routes.NOTES_LIST))
-        }
-    }
-
-    fun deleteNote(note: Note) {
-        viewModelScope.launch {
-            repository.delete(note)
-            recentlyDeletedNote = note
-            _events.emit(
-                NotesUiEvent.ShowSnackbar(
-                    message = "Note deleted",
-                    action = "Undo"
-                )
-            )
-        }
-    }
-
     fun undoDelete() {
         viewModelScope.launch {
-            recentlyDeletedNote?.let { repository.insert(it) }
+            recentlyDeletedNote?.let { useCases.addNote(it) }
             recentlyDeletedNote = null
         }
     }
@@ -99,65 +76,98 @@ class NotesViewModel(private val repository: NoteRepository) : ViewModel() {
         }
     }
 
-    //OK For now but need to use Routes object
-    fun onEditClick(noteId: Long) {
-        viewModelScope.launch {
-            Log.d("NotesViewModel.onEditClick","${noteId}")
-            _events.emit(NotesUiEvent.Navigate("${Routes.ADD_EDIT_NOTE}?noteId=${noteId}"))
-        }
-    }
+
 
     fun loadNote(noteId: Long) {
         viewModelScope.launch {
-            val note = repository.getById(noteId)
+            val note = useCases.getNote((noteId))
             note?.let {
                 _addEditUiState.value = AddEditNoteUiState(
                     title = it.title,
-                    content = it.content
+                    content = it.content,
+                    error = ""
                 )
             }
         }
     }
 
-    fun updateTitle(newTitle: String) {
-        _addEditUiState.update { it.copy(title = newTitle) }
-    }
 
-    fun updateContent(newContent: String) {
-        _addEditUiState.update { it.copy(content = newContent) }
-    }
-
-    fun saveNote(noteId: Long? = null) {
+    fun saveNote() {
         viewModelScope.launch {
-            val state = _addEditUiState.value
-            if (noteId == null) {
-                // New note
-                repository.insert(Note(title = state.title, content = state.content))
-            } else {
-                repository.update(
-                    Note(
-                        id = noteId,
-                        title = state.title,
-                        content = state.content
+            try {
+                val state = _addEditUiState.value
+                if (currentNoteId == null) {
+                    // New note
+                    useCases.addNote(Note(title = state.title, content = state.content))
+                } else {
+                    useCases.updateNote(
+                        Note(
+                            id = currentNoteId!!,
+                            title = state.title,
+                            content = state.content
+                        )
+                    )
+                }
+                //_events.emit(NotesUiEvent.Navigate(Routes.NOTES_LIST))
+                _events.emit(NotesUiEvent.PopBackStack)
+            }
+            catch (e: IllegalArgumentException) {
+                /*
+                _events.emit(
+                    NotesUiEvent.ShowSnackbar(
+                        message = e.message ?: "Title cannot be blank"
                     )
                 )
+                 */
+                _addEditUiState.update {
+                    it.copy(
+                        error = e.message
+                    )
+                }
+
             }
-            _events.emit(NotesUiEvent.Navigate(Routes.NOTES_LIST))
         }
     }
 
     fun deleteCurrentNote(noteId: Long) {
         viewModelScope.launch {
-            val note = repository.getById(noteId) ?: return@launch
+            val note = useCases.getNote(noteId) ?: return@launch
             recentlyDeletedNote = note
-            repository.delete(note)
+            useCases.deleteNote(note)
             _events.emit(
                 NotesUiEvent.ShowSnackbar("Note deleted", action = "Undo")
             )
         }
     }
 
+    fun deleteAndNavigateBack(noteId:Long) {
+        viewModelScope.launch {
+            val note = useCases.getNote(noteId) ?: return@launch
+            recentlyDeletedNote = note
+            useCases.deleteNote(note)
+
+            // 1. Navigate back
+            //_events.emit(NotesUiEvent.Navigate(Routes.NOTES_LIST))
+            _events.emit(NotesUiEvent.PopBackStack)
+
+            //allow list screen time to start
+            //collecting events.
+            delay(100)
+
+            // 2. Show snackbar
+            _events.emit(
+                NotesUiEvent.ShowSnackbar(
+                    message = "Note deleted",
+                    action = "Undo"
+                    )
+                )
+
+
+        }
+    }
+
     fun init(noteId: Long?) {
+        currentNoteId = noteId
         if (noteId == null) {
             // New note → reset state
             _addEditUiState.value = AddEditNoteUiState()
@@ -181,6 +191,31 @@ class NotesViewModel(private val repository: NoteRepository) : ViewModel() {
                     )
                 }
 
+            }
+        }
+    }
+
+    fun onAddEditEvent(event: AddEditEvent) {
+        when (event) {
+
+            is AddEditEvent.TitleChanged -> {
+                _addEditUiState.update {
+                    it.copy(title = event.value,error = null)
+                }
+            }
+
+            is AddEditEvent.ContentChanged -> {
+                _addEditUiState.update {
+                    it.copy(content = event.value)
+                }
+            }
+
+            is AddEditEvent.SaveClicked -> {
+                saveNote()
+            }
+
+            is AddEditEvent.DeleteClicked ->{
+                currentNoteId?.let { deleteAndNavigateBack(it) }
             }
         }
     }

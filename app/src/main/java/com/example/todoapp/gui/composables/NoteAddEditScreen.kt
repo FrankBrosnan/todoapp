@@ -1,21 +1,19 @@
-package com.example.todoapp.gui
+package com.example.todoapp.gui.composables
 
-import android.util.Log
 import androidx.compose.foundation.layout.*
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import androidx.navigation.NavController
-import com.example.todoapp.model.Note
 import com.example.todoapp.viewmodel.NotesViewModel
-import kotlinx.coroutines.launch
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Delete
 import androidx.compose.ui.platform.testTag
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.example.todoapp.gui.navigation.Routes
-import com.example.todoapp.viewmodel.NotesUiEvent
+import com.example.todoapp.viewmodel.events.AddEditEvent
+import com.example.todoapp.viewmodel.events.NotesUiEvent
 
 
 /*
@@ -169,7 +167,8 @@ fun NotesAddEditScreen(
     noteId: Long? = null
 ) {
 
-    val uiState by viewModel.addEditUiState.collectAsStateWithLifecycle()
+    val state by viewModel.addEditUiState.collectAsStateWithLifecycle()
+
     val snackbarHostState: SnackbarHostState = remember { SnackbarHostState() }
 
     // Load note when screen starts
@@ -195,17 +194,44 @@ fun NotesAddEditScreen(
                         popUpTo(Routes.NOTES_LIST)
                     }
                 }
+                NotesUiEvent.PopBackStack -> {
+                    navController.popBackStack()
+                }
+
             }
         }
     }
 
     Scaffold(
         topBar = {
-            TopAppBar(title = { Text(if (noteId == null) "Add Note" else "Edit Note") })
+            TopAppBar(
+                title = { Text(if (noteId ==null) "Add Note" else "Edit Note") },
+                        actions = {
+                    if (noteId != null) {
+                        IconButton(
+                            onClick = {
+                                viewModel.onAddEditEvent(
+                                    AddEditEvent.DeleteClicked
+                                )
+                            },
+                            modifier = Modifier.testTag("action_delete")
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.Delete,
+                                contentDescription = "Delete"
+                            )
+                        }
+                    }
+                }
+                )
         },
         floatingActionButton = {
-            FloatingActionButton(onClick = { viewModel.saveNote(noteId) },
-                                 modifier = Modifier.fillMaxWidth().testTag("save_note")
+            FloatingActionButton(onClick = {
+                viewModel.onAddEditEvent(
+                    AddEditEvent.SaveClicked
+                )
+            },
+                modifier = Modifier.fillMaxWidth().testTag("save_note")
             ) {
                 Text("Save")
             }
@@ -219,28 +245,36 @@ fun NotesAddEditScreen(
                 .testTag("notes_add_edit")
         ) {
             OutlinedTextField(
-                value = uiState.title,
-                onValueChange = { viewModel.updateTitle(it) },
+                value = state.title,
+                onValueChange = {
+                    viewModel.onAddEditEvent(
+                        AddEditEvent.TitleChanged(it)
+                    )
+                },
                 label = { Text("Title") },
                 modifier = Modifier.fillMaxWidth().testTag("title_input")
             )
+            if (state.error != null) {
+                Spacer(modifier = Modifier.height(8.dp))
+                Text(
+                    text = state.error!!,
+                    color = MaterialTheme.colorScheme.error
+                )
+            }
+
             Spacer(modifier = Modifier.height(8.dp))
             OutlinedTextField(
-                value = uiState.content,
-                onValueChange = { viewModel.updateContent(it) },
+                value = state.content,
+                onValueChange = {
+                    viewModel.onAddEditEvent(
+                        AddEditEvent.ContentChanged(it)
+                    )
+                },
                 label = { Text("Content") },
                 modifier = Modifier.fillMaxWidth().testTag(tag = "content_input")
             )
-            Spacer(modifier = Modifier.height(16.dp))
 
-            if (noteId != null) {
-                Button(
-                    onClick = { viewModel.deleteCurrentNote(noteId) },
-                    colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error)
-                ) {
-                    Text("Delete")
-                }
-            }
+
         }
     }
 }

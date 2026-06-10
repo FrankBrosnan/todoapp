@@ -6,8 +6,6 @@ import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.navArgument
-import com.example.todoapp.gui.NotesAddEditScreen
-import com.example.todoapp.gui.NotesListScreen
 import com.example.todoapp.gui.navigation.Routes
 import com.example.todoapp.viewmodel.NotesViewModel
 
