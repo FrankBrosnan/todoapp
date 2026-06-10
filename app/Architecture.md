@@ -45,7 +45,7 @@ and real persistent db for production.
 MainActivity:-
 defines and creates composables and defines navigation classes with routes.
 
-Summary:
+Initial Summary:
 Single module app
 Uses Room
 Manual DI
@@ -59,4 +59,19 @@ NavGraph scoped models
 In memory db instrumentation tests.
 Moved from kapt to kts with Room.
 UI Reacting on Class NotesUiState which encapsulated the state of the Model.
+
+new update:
+Refactor app to MVI architecture
+
+- Convert NotesListScreen to MVI
+- Convert NotesAddEditScreen to MVI
+- Add UI State and UI Events
+- Replace Channels with SharedFlow
+- Introduce UseCase layer
+- Add repository interface for testability
+- Add validation handling
+- Add swipe-to-delete with undo
+- Add ViewModel unit tests
+- Restore instrumented tests
+
 
