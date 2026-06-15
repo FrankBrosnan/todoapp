@@ -23,4 +23,8 @@ interface NoteDao {
     @Update
     suspend fun update(note: Note)
 
+    //For debugging/testing reasons
+    @Query("SELECT * FROM notes")
+    suspend fun getAllRecords(): List<Note>
+
 }
